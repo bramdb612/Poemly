@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poemly - Poetry Community</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- ================= AUTHENTICATION PAGES ================= -->
+    <div id="authScreen" class="auth-wrapper">
+        
+        <!-- LOGIN CARD -->
+        <div id="loginCard" class="auth-card">
+            <h1 class="brand-title">Poemly <span>📚</span></h1>
+            <p class="brand-subtitle">A cozy space to share, read, and discuss poetry.</p>
+
+            <form id="loginForm" class="auth-form">
+                <h2>Welcome Back</h2>
+                <div class="form-group">
+                    <label>Email or Username</label>
+                    <input type="text" id="loginIdentifier" placeholder="Enter your email or username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                </div>
+                <div id="loginError" class="alert-error hidden">Invalid email/username or password.</div>
+                <button type="submit" class="btn-primary">Log In</button>
+                <p class="auth-toggle">New here? <a href="#" id="showRegister">Sign up</a></p>
+            </form>
+        </div>
+
+        <!-- REGISTER CARD -->
+        <div id="registerCard" class="auth-card hidden">
+            <h1 class="brand-title">Poemly <span>📚</span></h1>
+            <p class="brand-subtitle">Join our creative poetry community.</p>
+
+            <form id="registerForm" class="auth-form">
+                <h2>Create Account</h2>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="regUsername" placeholder="e.g., PoetJane" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="regEmail" placeholder="e.g., jane@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="At least 6 characters" minlength="6" required>
+                </div>
+                <div id="regError" class="alert-error hidden">An account with this email or username already exists.</div>
+                <button type="submit" class="btn-primary">Send Verification Code ➔</button>
+                <p class="auth-toggle">Already have an account? <a href="#" id="showLogin">Log in</a></p>
+            </form>
+        </div>
+
+        <!-- EMAIL VERIFICATION CARD -->
+        <div id="verifyCard" class="auth-card hidden">
+            <h1 class="brand-title">Email Verification 📧</h1>
+            <p class="brand-subtitle">We sent a 6-digit code to <strong id="sentEmailSpan"></strong></p>
+            
+            <!-- Simulated Inbox Notification -->
+            <div class="demo-inbox-toast">
+                📩 <strong>Simulated Email Notification:</strong><br>
+                Your Poemly verification code is: <span id="demoCodeDisplay" class="code-highlight">------</span>
+            </div>
+
+            <form id="verifyForm" class="auth-form">
+                <div class="form-group">
+                    <label>Enter 6-Digit Code</label>
+                    <input type="text" id="verifyInput" maxlength="6" placeholder="e.g. 123456" required autocomplete="off" class="code-input">
+                </div>
+                <div id="verifyError" class="alert-error hidden">Invalid verification code. Please check and try again.</div>
+                <button type="submit" class="btn-primary">Verify & Create Account</button>
+                <p class="auth-toggle">Didn't get the code? <a href="#" id="resendCodeBtn">Resend Code</a></p>
+                <p class="auth-toggle"><a href="#" id="backToRegBtn">← Back to Registration</a></p>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- ================= MAIN APP SCREEN ================= -->
+    <div id="appScreen" class="hidden">
+        
+        <!-- Navigation Bar -->
+        <header class="navbar">
+            <div class="nav-container">
+                <div class="logo">Poemly <span>📚</span></div>
+                
+                <!-- Search Bar -->
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search poem title or author...">
+                </div>
+
+                <nav class="nav-links">
+                    <button class="nav-btn active" data-target="view-read">Read Poems</button>
+                    <button class="nav-btn" data-target="view-clubs">Clubs</button>
+                    <button class="nav-btn" data-target="view-chats">Chats</button>
+                    <button class="nav-btn btn-write-nav" data-target="view-write">✍️ Write a Poem</button>
+                </nav>
+
+                <div class="user-menu">
+                    <span id="userGreeting">Hello!</span>
+                    <button id="logoutBtn" class="btn-logout">Log Out</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            
+            <!-- PAGE 1: READ POEMS / SEARCH RESULTS -->
+            <section id="view-read" class="page-view active">
+                <div class="section-header">
+                    <h2 id="feedTitle" class="page-title">Community Feed</h2>
+                    <span id="searchResultCount" class="badge hidden">0 found</span>
+                </div>
+                <div id="poemFeed" class="feed">
+                    <!-- Dynamic poems load here -->
+                </div>
+            </section>
+
+            <!-- PAGE 2: COMMUNITIES & CLUBS -->
+            <section id="view-clubs" class="page-view hidden">
+                <div id="allClubsDirectory">
+                    <div class="section-header">
+                        <h2 class="page-title">Poetry Clubs</h2>
+                        <button id="toggleClubFormBtn" class="btn-primary" style="width:auto;">+ Create a Club</button>
+                    </div>
+
+                    <!-- Create Club Form Card -->
+                    <div id="createClubCard" class="card form-card hidden">
+                        <h3>Start Your Own Poetry Club</h3>
+                        <form id="createClubForm">
+                            <div class="form-group">
+                                <label for="clubName">Club Name</label>
+                                <input type="text" id="clubName" placeholder="e.g., The Romantic Poets Society" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="clubDescription">Description</label>
+                                <textarea id="clubDescription" rows="3" placeholder="What is your club about?" required></textarea>
+                            </div>
+                            <div class="form-actions-inline">
+                                <button type="submit" class="btn-primary">Publish Club</button>
+                                <button type="button" id="cancelClubBtn" class="btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="clubsGrid" class="clubs-grid"></div>
+                </div>
+
+                <!-- Single Club View -->
+                <div id="singleClubView" class="hidden">
+                    <button id="backToClubsBtn" class="btn-secondary back-btn">← Back to All Clubs</button>
+                    
+                    <div class="card club-header-card">
+                        <h2 id="clubDetailTitle">Club Name</h2>
+                        <p id="clubDetailDesc">Club description goes here...</p>
+                        <div class="club-meta">
+                            <span id="clubDetailMembers">👥 0 Members</span>
+                            <button id="clubDetailJoinBtn" class="btn-join">Join Club</button>
+                        </div>
+                    </div>
+
+                    <div class="card form-card">
+                        <h3>Post in this Club</h3>
+                        <form id="clubPostForm">
+                            <div class="form-group">
+                                <textarea id="clubPostContent" rows="3" placeholder="Start a discussion or share a poem..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary" style="width:auto;">Post Discussion</button>
+                        </form>
+                    </div>
+
+                    <div class="club-discussion-section">
+                        <h3>Club Discussions & Verses</h3>
+                        <div id="clubPostFeed" class="feed"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 3: GROUP CHATS & PRIVATE MESSAGES -->
+            <section id="view-chats" class="page-view hidden">
+                <h2 class="page-title">Poet Conversations</h2>
+                
+                <div class="chat-layout card">
+                    <div class="chat-sidebar">
+                        <div class="sidebar-header">
+                            <h4>Rooms</h4>
+                            <button id="newPrivateChatBtn" class="btn-small">+ New Private Chat</button>
+                        </div>
+                        <div id="chatRoomsList" class="rooms-list"></div>
+                    </div>
+
+                    <div class="chat-main">
+                        <div class="chat-header-bar">
+                            <h3 id="currentRoomTitle">🌐 Global Lounge</h3>
+                            <span id="roomTypeBadge" class="badge">Public</span>
+                        </div>
+                        <div id="chatHistory" class="chat-history"></div>
+                        <form id="chatForm" class="chat-form">
+                            <input type="text" id="chatInput" placeholder="Type a message..." required>
+                            <button type="submit" class="btn-primary" style="width:auto;">Send</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 4: WRITE A POEM -->
+            <section id="view-write" class="page-view hidden">
+                <div class="card form-card">
+                    <h2>Compose a Masterpiece</h2>
+                    <p class="subtitle-text">Your poem will be published instantly to the community feed.</p>
+                    <form id="poemForm">
+                        <div class="form-group">
+                            <label for="poemTitle">Title</label>
+                            <input type="text" id="poemTitle" placeholder="e.g., Whispers of the Wind" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="poemContent">Your Poem</label>
+                            <textarea id="poemContent" rows="10" placeholder="Write your verses here..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary btn-large">Publish to World</button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ================= POET PROFILE MODAL ================= -->
+    <div id="poetProfileModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <button id="closeProfileModal" class="modal-close">✕</button>
+            <div class="profile-header">
+                <div class="profile-avatar">✍️</div>
+                <div class="profile-details">
+                    <h2 id="profileName">Poet Name</h2>
+                    <p class="profile-bio">Member of the Poemly community</p>
+                    <div class="profile-stats">
+                        <span><strong id="profilePoemCount">0</strong> Poems</span>
+                        <span><strong id="profileFollowerCount">0</strong> Followers</span>
+                    </div>
+                </div>
+                <button id="profileFollowBtn" class="btn-follow">Follow</button>
+            </div>
+            <hr class="divider">
+            <h3>Published Verses</h3>
+            <div id="profilePoemsList" class="feed modal-feed"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
