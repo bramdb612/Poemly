@@ -655,3 +655,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return str.replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag)); 
     }
 });
+
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKjTe0RzOxpMYl2sHocC8v045k3gUbaJk",
+    authDomain: "poemly-36fdc.firebaseapp.com",
+    projectId: "poemly-36fdc",
+    storageBucket: "poemly-36fdc.firebasestorage.app",
+    messagingSenderId: "472399699598",
+    appId: "1:472399699598:web:a65f25809889445630f3df",
+    measurementId: "G-KVFP8N9CY7"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
