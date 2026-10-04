@@ -2,45 +2,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
     let activeClubId = null;
-    let pendingAccount = null; // Holds user data awaiting email verification
+    let pendingAccount = null;
 
-    // --- Registered Accounts Store ---
-    const registeredUsers = {
-        'alex@poemly.org': { username: 'Alex Rivers', email: 'alex@poemly.org', password: 'password123' },
-        'luna@poemly.org': { username: 'Luna Star', email: 'luna@poemly.org', password: 'password123' }
-    };
-
-    // --- Mock Initial Poems ---
-    const poems = [
-        {
-            id: 'poem-1',
-            title: 'Golden Horizon',
-            author: 'Alex Rivers',
-            content: 'The sun dips low behind the hill,\nThe world grows quiet, soft, and still.\nA promise left in amber light,\nBefore we say goodnight.',
-            timestamp: Date.now() - 3600000,
-            likes: 12,
-            likedBy: [],
-            comments: [{ author: 'Luna Star', text: 'Love the warmth in this piece!' }]
-        },
-        {
-            id: 'poem-2',
-            title: 'Midnight Echoes',
-            author: 'Luna Star',
-            content: 'In silence of the darkest hour,\nThe stars display their subtle power.\nThey whisper dreams we left behind,\nTo soothe a weary, restless mind.',
-            timestamp: Date.now() - 7200000,
-            likes: 19,
-            likedBy: [],
-            comments: []
+    // --- LOCAL STORAGE HELPERS FOR USER PERSISTENCE ---
+    function getStoredUsers() {
+        const stored = localStorage.getItem('poemly_registered_users');
+        if (stored) {
+            try { return JSON.parse(stored); } catch(e) {}
         }
-    ];
+        // Default seed accounts
+        const initial = {
+            'alex@poemly.org': { username: 'Alex Rivers', email: 'alex@poemly.org', password: 'password123' },
+            'luna@poemly.org': { username: 'Luna Star', email: 'luna@poemly.org', password: 'password123' }
+        };
+        localStorage.setItem('poemly_registered_users', JSON.stringify(initial));
+        return initial;
+    }
 
-    // --- User Profiles Stats ---
+    function saveUserAccount(userObj) {
+        const users = getStoredUsers();
+        users[userObj.email.toLowerCase()] = userObj;
+        localStorage.setItem('poemly_registered_users', JSON.stringify(users));
+    }
+
+    // --- LOCAL STORAGE HELPERS FOR POEMS ---
+    function getStoredPoems() {
+        const stored = localStorage.getItem('poemly_poems');
+        if (stored) {
+            try { return JSON.parse(stored); } catch(e) {}
+        }
+        const initial = [
+            {
+                id: 'poem-1',
+                title: 'Golden Horizon',
+                author: 'Alex Rivers',
+                content: 'The sun dips low behind the hill,\nThe world grows quiet, soft, and still.\nA promise left in amber light,\nBefore we say goodnight.',
+                timestamp: Date.now() - 3600000,
+                likes: 12,
+                likedBy: [],
+                comments: [{ author: 'Luna Star', text: 'Love the warmth in this piece!' }]
+            },
+            {
+                id: 'poem-2',
+                title: 'Midnight Echoes',
+                author: 'Luna Star',
+                content: 'In silence of the darkest hour,\nThe stars display their subtle power.\nThey whisper dreams we left behind,\nTo soothe a weary, restless mind.',
+                timestamp: Date.now() - 7200000,
+                likes: 19,
+                likedBy: [],
+                comments: []
+            }
+        ];
+        localStorage.setItem('poemly_poems', JSON.stringify(initial));
+        return initial;
+    }
+
+    function savePoems(poemsArray) {
+        localStorage.setItem('poemly_poems', JSON.stringify(poemsArray));
+    }
+
+    const poems = getStoredPoems();
+
+    // User Profiles Memory Store
     const userProfiles = {
         'Alex Rivers': { followers: 24, isFollowed: false },
         'Luna Star': { followers: 58, isFollowed: false }
     };
 
-    // --- Mock Clubs Data ---
+    // Clubs Data
     const clubs = [
         {
             id: 'haiku-haven',
@@ -52,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
-    // --- Mock Chat Rooms Data ---
+    // Chat Rooms Data
     const chatRooms = [
         {
             id: 'global',
@@ -67,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentRoomId = 'global';
 
-    // --- DOM Auth Elements ---
+    // DOM Elements
     const authScreen = document.getElementById('authScreen');
     const appScreen = document.getElementById('appScreen');
     
@@ -83,9 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const regError = document.getElementById('regError');
     const verifyError = document.getElementById('verifyError');
 
-    // ================= 1. AUTHENTICATION & VERIFICATION FLOW =================
+    // ================= 1. AUTHENTICATION & PERSISTENT LOGINS =================
     
-    // Toggle Card Views
     document.getElementById('showRegister').addEventListener('click', (e) => {
         e.preventDefault();
         loginCard.classList.add('hidden');
@@ -107,15 +135,18 @@ document.addEventListener('DOMContentLoaded', () => {
         registerCard.classList.remove('hidden');
     });
 
-    // Registration Form Submit -> Sends Code
+    // Sign Up - Step 1
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const username = document.getElementById('regUsername').value.trim();
         const email = document.getElementById('regEmail').value.trim().toLowerCase();
         const password = document.getElementById('regPassword').value;
 
-        // Check if account exists
-        const exists = Object.values(registeredUsers).some(u => u.email === email || u.username.toLowerCase() === username.toLowerCase());
+        const users = getStoredUsers();
+        const exists = Object.values(users).some(u => 
+            u.email.toLowerCase() === email || u.username.toLowerCase() === username.toLowerCase()
+        );
+
         if (exists) {
             regError.classList.remove('hidden');
             return;
@@ -140,11 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pendingAccount) {
             pendingAccount.code = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('demoCodeDisplay').textContent = pendingAccount.code;
-            alert(`A new verification code has been generated: ${pendingAccount.code}`);
+            alert(`New code generated: ${pendingAccount.code}`);
         }
     });
 
-    // Verify Code & Create Account
+    // Sign Up - Step 2 (Verify Code)
     verifyForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const enteredCode = document.getElementById('verifyInput').value.trim();
@@ -152,13 +183,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pendingAccount && enteredCode === pendingAccount.code) {
             verifyError.classList.add('hidden');
             
-            registeredUsers[pendingAccount.email] = {
+            const newAccount = {
                 username: pendingAccount.username,
                 email: pendingAccount.email,
                 password: pendingAccount.password
             };
 
-            loginSuccess(pendingAccount.username);
+            // PERMANENT SAVE TO LOCALSTORAGE
+            saveUserAccount(newAccount);
+
+            loginSuccess(newAccount.username);
             pendingAccount = null;
             verifyForm.reset();
             registerForm.reset();
@@ -173,7 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
         const password = document.getElementById('loginPassword').value;
 
-        const user = Object.values(registeredUsers).find(u => 
+        const users = getStoredUsers();
+        
+        // Match by Email OR Username (case-insensitive)
+        const user = Object.values(users).find(u => 
             u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier
         );
 
@@ -210,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         registerCard.classList.add('hidden');
     });
 
-    // ================= 2. SEARCH BAR & READ FEED =================
+    // ================= 2. SEARCH & POEM FEED =================
     const searchInput = document.getElementById('searchInput');
     const navButtons = document.querySelectorAll('.nav-btn');
     const pageViews = document.querySelectorAll('.page-view');
@@ -308,13 +345,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 comments: []
             });
 
+            savePoems(poems);
             document.getElementById('poemForm').reset();
             renderPoemFeed(poems);
             document.querySelector('[data-target="view-read"]').click();
         }
     });
 
-    // Interactive Delegations (Author Profile, Likes, Delete)
+    // Poem Card Actions
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('author-link')) {
             openPoetProfile(e.target.dataset.author);
@@ -332,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         poem.likes--;
                         poem.likedBy = poem.likedBy.filter(u => u !== currentUser);
                     }
+                    savePoems(poems);
                     renderPoemFeed(poems);
                 }
             }
@@ -339,11 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (e.target.classList.contains('btn-delete')) {
             const timestamp = parseInt(e.target.dataset.timestamp);
-            if (Date.now() - timestamp <= 86400000) { // 24 hours
+            if (Date.now() - timestamp <= 86400000) {
                 if (confirm("Delete this poem permanently?")) {
                     const id = e.target.closest('.poem-card').dataset.id;
                     const idx = poems.findIndex(p => p.id === id);
                     if (idx > -1) poems.splice(idx, 1);
+                    savePoems(poems);
                     renderPoemFeed(poems);
                 }
             } else {
@@ -352,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add Comment on Poem
+    // Add Comment
     document.addEventListener('submit', (e) => {
         if (e.target.classList.contains('comment-form')) {
             e.preventDefault();
@@ -362,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const poem = poems.find(p => p.id === card.dataset.id);
                 if (poem) {
                     poem.comments.push({ author: currentUser, text: input.value.trim() });
+                    savePoems(poems);
                     renderPoemFeed(poems);
                 }
             }
@@ -402,38 +443,30 @@ document.addEventListener('DOMContentLoaded', () => {
         profileFollowBtn.classList.toggle('following', profile.isFollowed);
     });
 
-    // ================= 4. CLUBS SYSTEM (FIXED & RESTORED) =================
+    // ================= 4. CLUBS SYSTEM =================
     const toggleClubFormBtn = document.getElementById('toggleClubFormBtn');
     const createClubCard = document.getElementById('createClubCard');
     const cancelClubBtn = document.getElementById('cancelClubBtn');
     const createClubForm = document.getElementById('createClubForm');
 
-    // Show/Hide Club Creation Form
-    toggleClubFormBtn.addEventListener('click', () => {
-        createClubCard.classList.remove('hidden');
-    });
+    toggleClubFormBtn.addEventListener('click', () => createClubCard.classList.remove('hidden'));
+    cancelClubBtn.addEventListener('click', () => createClubCard.classList.add('hidden'));
 
-    cancelClubBtn.addEventListener('click', () => {
-        createClubCard.classList.add('hidden');
-    });
-
-    // Submit New Club
     createClubForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = document.getElementById('clubName').value.trim();
         const description = document.getElementById('clubDescription').value.trim();
 
         if (name && description) {
-            const newClub = {
+            clubs.unshift({
                 id: 'club_' + Date.now(),
                 name: name,
                 description: description,
                 members: 1,
                 joined: true,
                 posts: []
-            };
+            });
 
-            clubs.unshift(newClub);
             renderClubsDirectory();
             createClubForm.reset();
             createClubCard.classList.add('hidden');
@@ -465,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Club Directory Actions (Join / Enter)
     document.getElementById('clubsGrid').addEventListener('click', (e) => {
         const clubId = e.target.dataset.clubId;
         if (!clubId) return;
@@ -518,11 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
         club.posts.forEach((post) => {
             const article = document.createElement('article');
             article.className = 'card poem-card';
-            
-            let commentsHTML = post.comments.map(c => 
-                `<div class="comment"><strong>${escapeHTML(c.author)}:</strong> ${escapeHTML(c.text)}</div>`
-            ).join('');
-
             article.innerHTML = `
                 <div class="poem-header">
                     <div class="header-info">
@@ -530,10 +557,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="poem-body">${escapeHTML(post.content)}</div>
-                <div class="comments-section">
-                    <h4>Club Replies</h4>
-                    <div class="comments-list">${commentsHTML}</div>
-                </div>
             `;
             clubPostFeed.appendChild(article);
         });
@@ -556,10 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ================= 5. PRIVATE CHATS SYSTEM (FIXED & RESTORED) =================
-    const newPrivateChatBtn = document.getElementById('newPrivateChatBtn');
-
-    newPrivateChatBtn.addEventListener('click', () => {
+    // ================= 5. PRIVATE CHATS =================
+    document.getElementById('newPrivateChatBtn').addEventListener('click', () => {
         const recipient = prompt("Enter the username of the poet you want to chat with:");
         if (recipient && recipient.trim() !== "") {
             const roomId = 'priv_' + Date.now();
