@@ -25,40 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('poemly_registered_users', JSON.stringify(users));
     }
 
-    // --- LOCAL STORAGE HELPERS FOR POEMS ---
-    function getStoredPoems() {
-        const stored = localStorage.getItem('poemly_poems');
-        if (stored) {
-            try { return JSON.parse(stored); } catch(e) {}
-        }
-        const initial = [
-            {
-                id: 'poem-1',
-                title: 'Golden Horizon',
-                author: 'Alex Rivers',
-                content: 'The sun dips low behind the hill,\nThe world grows quiet, soft, and still.\nA promise left in amber light,\nBefore we say goodnight.',
-                timestamp: Date.now() - 3600000,
-                likes: 12,
-                likedBy: [],
-                comments: [{ author: 'Luna Star', text: 'Love the warmth in this piece!' }]
-            },
-            {
-                id: 'poem-2',
-                title: 'Midnight Echoes',
-                author: 'Luna Star',
-                content: 'In silence of the darkest hour,\nThe stars display their subtle power.\nThey whisper dreams we left behind,\nTo soothe a weary, restless mind.',
-                timestamp: Date.now() - 7200000,
-                likes: 19,
-                likedBy: [],
-                comments: []
-            }
-        ];
-        localStorage.setItem('poemly_poems', JSON.stringify(initial));
-        return initial;
-    }
+    let poems = [];
 
-    function savePoems(poemsArray) {
-        localStorage.setItem('poemly_poems', JSON.stringify(poemsArray));
+    // Real-time listener for poems from Firestore
+    function initRealtimePoems() {
+        const { collection, onSnapshot } = window.dbModules;
+        const db = window.db;
+
+        onSnapshot(collection(db, "poems"), (snapshot) => {
+            poems = [];
+            snapshot.forEach((docSnap) => {
+                poems.push({ firebaseId: docSnap.id, ...docSnap.data() });
+            });
+            // Sort by timestamp newest first
+            poems.sort((a, b) => b.timestamp - a.timestamp);
+            renderPoemFeed(poems);
+        }, (error) => {
+            console.error("Error listening to poems:", error);
+        });
     }
 
     const poems = getStoredPoems();
@@ -233,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         authScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
         
-        renderPoemFeed(poems);
+        initRealtimePoems(); // <--- Start syncing poems live here!
         renderClubsDirectory();
         renderChatRooms();
     }
@@ -327,31 +311,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Publish Poem
-    document.getElementById('poemForm').addEventListener('submit', (e) => {
+   // Publish Poem to Firestore
+    document.getElementById('poemForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const title = document.getElementById('poemTitle').value.trim();
         const content = document.getElementById('poemContent').value.trim();
 
         if (title && content) {
-            poems.unshift({
-                id: 'poem-' + Date.now(),
-                title: title,
-                author: currentUser,
-                content: content,
-                timestamp: Date.now(),
-                likes: 0,
-                likedBy: [],
-                comments: []
-            });
+            try {
+                const { collection, addDoc } = window.dbModules;
+                const db = window.db;
 
-            savePoems(poems);
-            document.getElementById('poemForm').reset();
-            renderPoemFeed(poems);
-            document.querySelector('[data-target="view-read"]').click();
+                await addDoc(collection(db, "poems"), {
+                    id: 'poem-' + Date.now(),
+                    title: title,
+                    author: currentUser,
+                    content: content,
+                    timestamp: Date.now(),
+                    likes: 0,
+                    likedBy: [],
+                    comments: []
+                });
+
+                document.getElementById('poemForm').reset();
+                document.querySelector('[data-target="view-read"]').click();
+            } catch (err) {
+                console.error("Error publishing poem: ", err);
+                alert("Failed to publish poem. Check console for details.");
+            }
         }
     });
-
     // Poem Card Actions
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('author-link')) {
@@ -361,17 +350,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.btn-like')) {
             const card = e.target.closest('.poem-card');
             if (card) {
-                const poem = poems.find(p => p.id === card.dataset.id);
+                const poem = poems.find(p => p.id === card.dataset.id || p.firebaseId === card.dataset.id);
                 if (poem) {
-                    if (!poem.likedBy.includes(currentUser)) {
-                        poem.likes++;
-                        poem.likedBy.push(currentUser);
-                    } else {
-                        poem.likes--;
-                        poem.likedBy = poem.likedBy.filter(u => u !== currentUser);
-                    }
-                    savePoems(poems);
-                    renderPoemFeed(poems);
+                    const { doc, updateDoc, arrayUnion, arrayRemove } = window.dbModules;
+                    const db = window.db;
+                    const poemRef = doc(db, "poems", poem.firebaseId);
+
+                    const hasLiked = poem.likedBy.includes(currentUser);
+                    const newLikes = hasLiked ? poem.likes - 1 : poem.likes + 1;
+                    
+                    updateDoc(poemRef, {
+                        likes: newLikes,
+                        likedBy: hasLiked ? arrayRemove(currentUser) : arrayUnion(currentUser)
+                    });
                 }
             }
         }
@@ -380,11 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const timestamp = parseInt(e.target.dataset.timestamp);
             if (Date.now() - timestamp <= 86400000) {
                 if (confirm("Delete this poem permanently?")) {
-                    const id = e.target.closest('.poem-card').dataset.id;
-                    const idx = poems.findIndex(p => p.id === id);
-                    if (idx > -1) poems.splice(idx, 1);
-                    savePoems(poems);
-                    renderPoemFeed(poems);
+                    const card = e.target.closest('.poem-card');
+                    const poem = poems.find(p => p.id === card.dataset.id || p.firebaseId === card.dataset.id);
+                    if (poem) {
+                        const { doc, deleteDoc } = window.dbModules;
+                        const db = window.db;
+                        deleteDoc(doc(db, "poems", poem.firebaseId));
+                    }
                 }
             } else {
                 alert("Poems can only be deleted within 24 hours of posting.");
