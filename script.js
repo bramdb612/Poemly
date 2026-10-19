@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const poems = getStoredPoems();
+    let poems = [];
 
     // User Profiles Memory Store
     const userProfiles = {
