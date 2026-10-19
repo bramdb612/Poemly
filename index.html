@@ -276,7 +276,22 @@
 
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
   const analytics = getAnalytics(app);
+
+  // Expose db and modules globally for script.js
+  window.db = db;
+  window.dbModules = { 
+    collection, 
+    addDoc, 
+    getDocs, 
+    onSnapshot, 
+    doc, 
+    updateDoc, 
+    deleteDoc, 
+    arrayUnion, 
+    arrayRemove 
+  };
 </script>
 </body>
 </html>
