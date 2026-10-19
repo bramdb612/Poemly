@@ -45,8 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    let poems = [];
-
     // User Profiles Memory Store
     const userProfiles = {
         'Alex Rivers': { followers: 24, isFollowed: false },
