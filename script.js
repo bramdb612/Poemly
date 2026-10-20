@@ -29,23 +29,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let poems = [];
 
-    // Real-time listener for poems from Firestore
-    function initRealtimePoems() {
-        const { collection, onSnapshot } = window.dbModules;
-        const db = window.db;
+   // 1. Listen for incoming global chat messages in real time
+function initGlobalChat() {
+    const { collection, onSnapshot, query, orderBy } = window.dbModules;
+    const messagesRef = collection(window.db, 'global_chat');
+    const q = query(messagesRef, orderBy('createdAt', 'asc'));
 
-        onSnapshot(collection(db, "poems"), (snapshot) => {
-            poems = [];
-            snapshot.forEach((docSnap) => {
-                poems.push({ firebaseId: docSnap.id, ...docSnap.data() });
-            });
-            // Sort by timestamp newest first
-            poems.sort((a, b) => b.timestamp - a.timestamp);
-            renderPoemFeed(poems);
-        }, (error) => {
-            console.error("Error listening to poems:", error);
+    onSnapshot(q, (snapshot) => {
+        const chatContainer = document.getElementById('chatMessagesContainer');
+        if (!chatContainer) return;
+
+        chatContainer.innerHTML = ''; // Clear container
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const messageEl = document.createElement('div');
+            
+            // Format message card
+            messageEl.className = `chat-message ${data.sender === currentUser ? 'my-message' : 'other-message'}`;
+            messageEl.innerHTML = `
+                <span class="chat-sender"><strong>${data.sender}</strong></span>
+                <p class="chat-text">${data.text}</p>
+            `;
+            
+            chatContainer.appendChild(messageEl);
         });
+
+        // Auto-scroll to latest message
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+}
+
+// 2. Send a new message live to Firestore
+async function sendGlobalChatMessage(text) {
+    if (!text.trim()) return;
+
+    const { collection, addDoc, serverTimestamp } = window.dbModules;
+
+    try {
+        await addDoc(collection(window.db, 'global_chat'), {
+            text: text,
+            sender: currentUser, // Your active logged-in user variable
+            createdAt: serverTimestamp()
+        });
+    } catch (err) {
+        console.error("Error sending message:", err);
     }
+}
 
     // User Profiles Memory Store
     const userProfiles = {

@@ -275,7 +275,7 @@
 
   // This is what fixes the "window.dbModules is undefined" error:
   window.db = db;
-  window.dbModules = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove };
+  window.dbModules = { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, query, orderBy, serverTimestamp};
 </script>
 <script src="script.js"></script>
 </body>
