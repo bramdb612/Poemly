@@ -1,3 +1,5 @@
+console.log("POEMLY SCRIPT IS ALIVE!");
+
 document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
