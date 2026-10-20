@@ -189,6 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
         const password = document.getElementById('loginPassword').value;
 
+        console.log("Attempting login with:", identifier);
+
         const users = getStoredUsers();
         
         // Match by Email OR Username (case-insensitive)
@@ -201,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginSuccess(user.username);
             loginForm.reset();
         } else {
+            console.log("Login failed: password or user mismatch.");
             loginError.classList.remove('hidden');
         }
     });
