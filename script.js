@@ -245,7 +245,7 @@ async function sendGlobalChatMessage(text) {
         if (!userProfiles[currentUser]) {
             userProfiles[currentUser] = { followers: 0, isFollowed: false };
         }
-
+        switchChatRoom('global', 'Global Public Room');
         document.getElementById('userGreeting').textContent = `Hi, ${currentUser}!`;
         authScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
@@ -605,77 +605,97 @@ async function sendGlobalChatMessage(text) {
         }
     });
 
-    // ================= 5. PRIVATE CHATS =================
-    document.getElementById('newPrivateChatBtn').addEventListener('click', () => {
-        const recipient = prompt("Enter the username of the poet you want to chat with:");
-        if (recipient && recipient.trim() !== "") {
-            const roomId = 'priv_' + Date.now();
-            const roomName = `🔒 Chat: ${recipient.trim()}`;
-            
-            chatRooms.push({
-                id: roomId,
-                title: roomName,
-                isPrivate: true,
-                messages: [
-                    { sender: 'System', text: `Private chat room created with ${recipient.trim()}.` }
-                ]
-            });
+   // ================= 5. GLOBAL & REAL-TIME CHATS (FIRESTORE) =================
 
-            renderChatRooms();
-            switchChatRoom(roomId);
-        }
-    });
+let unsubscribeChat = null; // Keeps track of live listener when switching rooms
 
-    function renderChatRooms() {
-        const list = document.getElementById('chatRoomsList');
-        list.innerHTML = '';
-        chatRooms.forEach(room => {
-            const btn = document.createElement('button');
-            btn.className = `room-item ${room.id === currentRoomId ? 'active' : ''}`;
-            btn.innerHTML = `<span>${escapeHTML(room.title)}</span>`;
-            btn.addEventListener('click', () => switchChatRoom(room.id));
-            list.appendChild(btn);
-        });
-    }
-
-    function switchChatRoom(roomId) {
-        currentRoomId = roomId;
-        const room = chatRooms.find(r => r.id === roomId);
+document.getElementById('newPrivateChatBtn').addEventListener('click', async () => {
+    const recipient = prompt("Enter the username of the poet you want to chat with:");
+    if (recipient && recipient.trim() !== "") {
+        const roomId = 'priv_' + Date.now();
+        const roomName = `🔒 Chat: ${recipient.trim()}`;
         
-        document.getElementById('currentRoomTitle').textContent = room.title;
-        const badge = document.getElementById('roomTypeBadge');
-        badge.textContent = room.isPrivate ? 'Private' : 'Public';
-        badge.className = `badge ${room.isPrivate ? 'private' : ''}`;
-
-        renderChatMessages();
-        renderChatRooms();
-    }
-
-    function renderChatMessages() {
-        const room = chatRooms.find(r => r.id === currentRoomId);
-        const history = document.getElementById('chatHistory');
-        history.innerHTML = room.messages.map(m => `
-            <div class="chat-message">
-                <strong>${escapeHTML(m.sender)}:</strong> ${escapeHTML(m.text)}
-            </div>
-        `).join('');
-        history.scrollTop = history.scrollHeight;
-    }
-
-    document.getElementById('chatForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const input = document.getElementById('chatInput');
-        if (input.value.trim() !== '') {
-            const room = chatRooms.find(r => r.id === currentRoomId);
-            room.messages.push({
-                sender: currentUser,
-                text: input.value.trim()
+        const { collection, addDoc, serverTimestamp } = window.dbModules;
+        try {
+            // Send a system initialization message to the new room in Firestore
+            await addDoc(collection(window.db, 'chat_messages'), {
+                roomId: roomId,
+                roomTitle: roomName,
+                sender: 'System',
+                text: `Private chat room created with ${recipient.trim()}.`,
+                createdAt: serverTimestamp()
             });
-
-            input.value = '';
-            renderChatMessages();
+            switchChatRoom(roomId, roomName);
+        } catch (err) {
+            console.error("Error creating private room:", err);
         }
+    }
+});
+
+function switchChatRoom(roomId, roomTitle = 'Global Public Room') {
+    currentRoomId = roomId;
+    
+    document.getElementById('currentRoomTitle').textContent = roomTitle;
+    const badge = document.getElementById('roomTypeBadge');
+    const isPrivate = roomId.startsWith('priv_');
+    badge.textContent = isPrivate ? 'Private' : 'Public';
+    badge.className = `badge ${isPrivate ? 'private' : ''}`;
+
+    // Load messages live from Firestore for this specific room
+    initRoomChatListener(roomId);
+}
+
+function initRoomChatListener(roomId) {
+    const { collection, onSnapshot, query, orderBy, where } = window.dbModules;
+    const messagesRef = collection(window.db, 'chat_messages');
+    
+    // Query messages belonging to this room, ordered by time
+    const q = query(messagesRef, where('roomId', '==', roomId), orderBy('createdAt', 'asc'));
+
+    // Stop listening to the previous room's messages
+    if (unsubscribeChat) unsubscribeChat();
+
+    // Listen live for updates across the globe
+    unsubscribeChat = onSnapshot(q, (snapshot) => {
+        const history = document.getElementById('chatHistory');
+        if (!history) return;
+        
+        history.innerHTML = '';
+
+        snapshot.forEach((doc) => {
+            const m = doc.data();
+            const msgEl = document.createElement('div');
+            msgEl.className = 'chat-message';
+            msgEl.innerHTML = `<strong>${escapeHTML(m.sender)}:</strong> ${escapeHTML(m.text)}`;
+            history.appendChild(msgEl);
+        });
+
+        // Auto-scroll to bottom
+        history.scrollTop = history.scrollHeight;
     });
+}
+
+document.getElementById('chatForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    
+    if (text !== '') {
+        const { collection, addDoc, serverTimestamp } = window.dbModules;
+        try {
+            // Push message live to Firestore database
+            await addDoc(collection(window.db, 'chat_messages'), {
+                roomId: currentRoomId,
+                sender: currentUser,
+                text: text,
+                createdAt: serverTimestamp()
+            });
+            input.value = '';
+        } catch (err) {
+            console.error("Error sending message:", err);
+        }
+    }
+});
 
     function escapeHTML(str) { 
         return str.replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag)); 
