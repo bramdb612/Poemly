@@ -701,3 +701,28 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
         return str.replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag)); 
     }
 });
+// Load and listen to published poems in real-time
+function initRealtimePoems() {
+    const { collection, onSnapshot, query, orderBy } = window.dbModules;
+    const poemsRef = collection(window.db, 'poems');
+    const q = query(poemsRef, orderBy('createdAt', 'desc'));
+
+    onSnapshot(q, (snapshot) => {
+        const feedContainer = document.getElementById('poemsFeed');
+        if (!feedContainer) return;
+
+        feedContainer.innerHTML = '';
+
+        snapshot.forEach((doc) => {
+            const p = doc.data();
+            const poemEl = document.createElement('div');
+            poemEl.className = 'poem-card';
+            poemEl.innerHTML = `
+                <h3>${escapeHTML(p.title || 'Untitled')}</h3>
+                <p class="poem-author">By ${escapeHTML(p.author || 'Anonymous')}</p>
+                <div class="poem-body">${escapeHTML(p.content || '')}</div>
+            `;
+            feedContainer.appendChild(poemEl);
+        });
+    });
+}
