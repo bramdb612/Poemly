@@ -252,7 +252,6 @@ async function sendGlobalChatMessage(text) {
         
         initRealtimePoems(); // <--- Start syncing poems live here!
         renderClubsDirectory();
-        renderChatRooms();
     }
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
